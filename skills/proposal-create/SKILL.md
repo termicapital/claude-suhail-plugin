@@ -1,7 +1,7 @@
 ---
 name: proposal-create
 description: Generate a Suhail-branded Arabic (RTL) proposal as a Figma Slides deck for a non-profit client. Use when the user says "create a proposal", "make a proposal", "proposal for <client>", "Suhail proposal", "propuesta", or uses Arabic "عرض", "عرض فني", "مقترح", especially when paired with a client website URL or content brief. Triggers on client names like Kyan, Ofuq, MORD, AlUla volunteers.
-version: 0.2.0
+version: 0.3.0
 ---
 
 # proposal-create
@@ -91,3 +91,50 @@ Use the result to pick between `figma.createSlide()` and `figma.currentPage.appe
 - **Don't call `get_metadata` on the new file.** It's a Slides file; the tool only works on Design files. Use `get_screenshot` for verification.
 - **Don't skip the API probe.** Slides API surface changes; probe once per session before assuming method names.
 - **Don't generate the deck in English unless the user explicitly overrides.** Default is Arabic RTL.
+
+## Slides API gotchas (from v0.3.0 production dry-run)
+
+These bit me during the first real Kyan run. Bake the workarounds into every `use_figma` call:
+
+1. **Fresh Slides files have an empty `SLIDE_GRID`, not a default `SLIDE`.** `figma.currentPage.children` returns `[SLIDE_GRID]` with `children.length === 0`. To get a slide, call `figma.createSlide()` — it creates a `SLIDE` (1920×1080) and auto-attaches it to the grid. Don't search for an existing SLIDE node on a brand-new file.
+
+2. **`SLIDE_GRID` nodes throw on `fills`, `createSlide`, and most other property accesses.** Any tree-walk that touches `.fills` must guard: either `if ('fills' in node)` *and* `Array.isArray(node.fills)`, or skip via `if (node.type === "SLIDE_GRID") continue`. A naive `walk(...)` will crash on the first SLIDE_GRID it hits.
+
+3. **Position offset bug for many-child slides.** When a SLIDE accumulates ~5+ children directly, children added after the 4th are stored with their `x`/`y` shifted by `(-240, -240)` relative to what you set. Verified via probe: I set `x=60, y=1030`, Figma stored `x=-180, y=790`. The first 4 children are placed correctly. Workaround:
+
+   ```javascript
+   // After all children are added to a slide or its content frame:
+   function fixOffsets(container, startIndex = 4) {
+     for (let i = startIndex; i < container.children.length; i++) {
+       const c = container.children[i];
+       c.x += 240; c.y += 240;
+     }
+   }
+   ```
+   The shift is exactly +240 on both axes for indices ≥ 4. Apply once at the end of each slide-build call.
+
+4. **Use a content `FRAME` inside each slide as the layout root.** Pattern:
+   ```javascript
+   const slide = figma.createSlide();
+   slide.name = "01 — الغلاف";
+   const fr = figma.createFrame();
+   fr.name = "content";
+   fr.resize(1920, 1080);
+   fr.x = 0; fr.y = 0;
+   fr.layoutMode = "NONE";
+   fr.clipsContent = true;
+   fr.fills = [{ type: "SOLID", color: WHITE }];
+   slide.appendChild(fr);
+   // ...add all content to `fr`, not directly to `slide`...
+   fixOffsets(fr);
+   ```
+   The frame also makes the slide canvas predictable when querying width/height.
+
+5. **Don't trust `slide.height` after appending children.** It can change. Use the constants `W = 1920, H = 1080` for positioning math.
+
+6. **PYTHONIOENCODING=utf-8 is mandatory on Windows.** Otherwise `scripts/parse_brief.py` and `scripts/fetch_brand.py` choke on Arabic bullet glyphs (`●`, `•`) when piping JSON to stdout. Set in the shell command:
+   ```
+   PYTHONIOENCODING=utf-8 python scripts/parse_brief.py ...
+   ```
+
+7. **`fetch_brand.py` deps must be installed once.** `pip install requests beautifulsoup4 Pillow python-docx`. If `bs4` isn't found, fall back to: download the logo URL from WebFetch's response directly via curl, then quantize colors inline with Pillow. (`fetch_brand.py` will graceful-fail with a clear stderr if the import is missing.)
