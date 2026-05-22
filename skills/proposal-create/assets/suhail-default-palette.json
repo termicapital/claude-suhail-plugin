@@ -1,0 +1,13 @@
+{
+  "primary_hex": "#0A4D8C",
+  "secondary_hex": "#F4A300",
+  "neutral_dark_hex": "#1A1A1A",
+  "neutral_light_hex": "#F5F5F5",
+  "accent_hex": "#00A896",
+  "fonts": {
+    "arabic_primary": "IBM Plex Sans Arabic",
+    "arabic_fallback": ["Noto Sans Arabic", "Cairo", "Tajawal"],
+    "latin_primary": "Inter"
+  },
+  "notes": "Suhail house palette used as a last-resort fallback when brand scraping fails. Tell the user when these are applied so they know to override."
+}

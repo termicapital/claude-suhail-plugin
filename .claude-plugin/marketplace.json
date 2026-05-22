@@ -1,0 +1,15 @@
+{
+  "name": "suhail",
+  "owner": {
+    "name": "Suhail Innovation Company",
+    "email": "g.irarrazaval@suhailsa.com"
+  },
+  "description": "Suhail-branded skills for client deliverables.",
+  "plugins": [
+    {
+      "name": "suhail",
+      "source": ".",
+      "description": "Skills for Suhail client deliverables — proposals, decks, reports. First skill: proposal-create (Arabic RTL Figma Slides proposals for non-profit clients)."
+    }
+  ]
+}
