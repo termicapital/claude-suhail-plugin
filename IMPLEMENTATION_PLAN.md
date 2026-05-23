@@ -70,9 +70,38 @@ Each phase below has a clear deliverable, exit criteria, and pitfalls.
 
 ---
 
-### Phase 1 — Add `{{placeholders}}` to a master copy of Mord (≈1–2 hours, **Guillermo does this manually in Figma UI**)
+### Phase 1 — Add `{{placeholders}}` to Mord itself (Opus partially completed 2026-05-23; Haiku to finish slides 6–18)
 
-**Why manual:** placeholder authoring is a design judgment — which Mord-specific text gets parameterized, and how text wraps at different content lengths. Haiku can't see the slides at human resolution; you can.
+**Approach change from original plan:** Guillermo doesn't read Arabic, so manual edits in Figma UI weren't feasible. Instead, **Mord (`JtzNUXrAHFupkajwfPz952`) itself is the master template** — no separate copy. Opus 4.7 hand-edited slides 1–5 via the Figma MCP during a planning session, establishing the naming conventions documented in `references/content-sections.md`. Haiku must finish slides 6–18 using the same conventions.
+
+**Setup complete (do not redo):**
+
+- Custom fonts uploaded to the Figma team (Droid Arabic Kufi + IBM Plex Sans Arabic, all weights Mord uses). `figma.loadFontAsync` works for both families.
+- Brand primary color identified: teal RGB `(0.027, 0.608, 0.753)` ≈ `#079BC0`. The dark navy `(0.19, 0.27, 0.41)` ≈ `#304468` is Suhail's neutral, stays fixed.
+- Slides 1–5 fully done: cover, TOC, exec_summary, strategy, context. See `references/content-sections.md` for the placeholder list per slide and the naming conventions.
+
+**What Haiku must do for slides 6–18:**
+
+For each slide:
+1. Inspect text nodes (use `slide.findAll(n => n.type === "TEXT")` — but **be careful with slide 6**, which timed out under deep walks in Opus's session; try direct-children-only queries first, or smaller scoped walks).
+2. Classify each text node:
+   - Boilerplate (slide title, "نقاط يغطيها العرض" sublabels, Page Number, Headline, subheader labels like "الرؤية الاستراتيجية") → leave untouched.
+   - Client content (long Arabic body paragraphs, named card titles + bodies) → replace with `{{semantic_placeholder}}`.
+3. Identify brand-color elements: any non-text node whose first fill is solid teal `(0.027, 0.608, 0.753)`. Rename to `brand_primary_<section>_<role>`.
+4. Rename the slide itself: `NN — <slug> | section=<section_id>` (per the section_id column in `references/content-sections.md`).
+5. **Always load all needed font weights before any `setRangeFontName` or `node.characters = ...`** — text nodes can have mixed font runs (Opus hit this on slide 5 where one paragraph had a Medium run inside what looked like a Regular paragraph). Load IBM Plex Sans Arabic Regular/Medium/SemiBold/Bold + Droid Arabic Kufi Regular/Bold up front.
+
+**Per-slide placeholder targets (Haiku, follow the schema in `content-sections.md`):**
+
+- Slide 6 (`understanding`): intro paragraph + 8 challenge cards (title + body each)
+- Slide 7 (`methodology_intro`): `{{methodology_overview}}`, `{{methodology_expected_outcome}}`, `{{methodology_principle}}` — done text node IDs in the inspection that succeeded: 1:567, 1:575, 1:583
+- Slide 8 (`methodology_phases`): 9 phase cards (title + brief each)
+- Slides 9–13 (`methodology_detail_a..e`): per-phase objective/activities/deliverables
+- Slide 14 (`diagnosis`): N diagnosis axes
+- Slide 15 (`deliverables`): N final deliverables
+- Slide 16 (`kpis`): N KPI rows (metric + target)
+- Slide 17 (`timeline`): 12-month gantt — 114 text nodes; expect this to need 3–4 separate `use_figma` calls
+- Slide 18 (`closing`): only rename the slide to `18 — closing | section=closing`; "شكراً" stays.
 
 **Steps (for Guillermo, before invoking Haiku):**
 
@@ -339,12 +368,19 @@ Before declaring v1.0 done:
 
 ## 8. Resolved decisions (Guillermo, 2026-05-23)
 
-1. **Master template location:** shared Suhail team space (not personal drafts). Haiku must ensure each teammate's Figma account is a member of that team, and capture the team's `planKey` for `create_new_file` calls.
-2. **Optionality:** `next_steps` is **mandatory**; `team` is **optional**. Reflected in Phase 4 catalog above.
-3. **Repo name:** `proposal-skill`. Existing repo is `termicapital/claude-suhail-plugin` — Haiku should ask Guillermo to confirm `gh repo rename` before pushing the install instructions in Phase 5.
+1. **Master template:** Mord itself (`JtzNUXrAHFupkajwfPz952`) — no separate copy. Opus partially placeholdered it during the planning session.
+2. **Figma team:** `team::1638593656956740161` ("El equipo de g.irarrazaval"). This is the only team `whoami` reports; no separate Suhail team exists yet. The master template plus the uploaded custom fonts live in this team.
+3. **Optionality:** all 18 slides are mandatory for v1.0. The optional-section mechanism described in Phase 4 stays in code as a no-op for v1.0; revisit in v2.0 if proposal variants emerge.
+4. **Repo name:** Guillermo decided NOT to rename; keep `termicapital/claude-suhail-plugin` as-is.
+5. **Custom fonts:** uploaded to the Figma team and verified loadable. `Droid Arabic Kufi` (Bold, Regular) + `IBM Plex Sans Arabic` (Regular, Medium, SemiBold, Bold). Sources cached at `C:\Users\gjira\Downloads\suhail-fonts\for-figma-upload\` in case re-upload is ever needed.
 
-## 9. Action required from Guillermo before Phase 1
+## 9. Phase 1 completion notes for Haiku
 
-- Confirm repo rename (`gh repo rename proposal-skill --repo termicapital/claude-suhail-plugin`) — Haiku will not perform this without explicit consent.
-- Identify the shared Suhail Figma team and confirm every intended teammate is a member.
-- Complete Phase 1 (the manual Figma work) and send Haiku the new `MASTER_TEMPLATE_KEY` plus the Suhail team `planKey`.
+Slides done by Opus (do NOT re-edit unless verifying):
+- Slide 1 (cover): `{{project_title}}`, `{{project_subtitle}}`; `logo_container`, `brand_primary_accent_bar`
+- Slide 2 (toc): boilerplate; 10 `brand_primary_toc_badge_N` + `brand_primary_toc_accent`
+- Slide 3 (exec_summary): `{{exec_intro}}` + `{{exec_point_1..3}}`; `brand_primary_exec_bg`/`_accent`
+- Slide 4 (strategy): 6 strategy placeholders; `brand_primary_strategy_bg`/`_accent`
+- Slide 5 (context): `{{context_para_1..4}}` (para 3 has a duplicate text node — keep both with same placeholder); `brand_primary_context_*` (bg, accent, 14 decorative vectors)
+
+Remaining slides for Haiku: 6 through 18. See `references/content-sections.md` for the per-slide schema and the "Known quirks" section for the slide 6 timeout workaround.
