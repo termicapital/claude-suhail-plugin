@@ -76,7 +76,7 @@ Each phase below has a clear deliverable, exit criteria, and pitfalls.
 
 **Steps (for Guillermo, before invoking Haiku):**
 
-1. In Figma UI: open Mord (`JtzNUXrAHFupkajwfPz952`), select "Duplicate" → rename the copy to **"Suhail — Master Proposal Template"**. Note the new fileKey from the URL.
+1. In Figma UI: open Mord (`JtzNUXrAHFupkajwfPz952`), select "Duplicate" → move the copy into the **shared Suhail team space** (not personal drafts), rename to **"Suhail — Master Proposal Template"**. Note the new fileKey and the Suhail team's `planKey` (visible via `whoami` once the team is connected — every teammate's Figma account must be a member of this team so `create_new_file` can target it). Note the new fileKey from the URL.
 2. Walk each slide. Replace Mord-specific text with placeholders from the canonical schema in `references/content-sections.md`. Suggested placeholder tokens (one per section):
    - `{{client_name_ar}}` — Arabic NGO name (e.g. "جمعية مرود")
    - `{{client_name_en}}` — Latin transliteration if used anywhere
@@ -235,15 +235,15 @@ Mandatory (always present, leave `{{placeholder}}` if missing in brief):
 - scope
 - investment
 - contact
+- next_steps
 
 Optional (slide is removed if brief lacks content):
 - methodology
 - timeline
 - team
-- next_steps
 ```
 
-Guillermo confirms / edits this list before Haiku locks it in.
+Confirmed by Guillermo 2026-05-23: `next_steps` is mandatory, `team` is optional.
 
 ---
 
@@ -255,16 +255,16 @@ Guillermo confirms / edits this list before Haiku locks it in.
 
 1. `git init` in `C:\Users\gjira\.claude\plugins\suhail\`. Commit everything except `.env`, `__pycache__`, and `.git`. Add a `.gitignore`.
 2. Create GitHub private repo (Guillermo creates it — Haiku writes the README and instructs).
-3. `git remote add origin git@github.com:<gjira>/suhail-claude-plugin.git && git push -u origin main`.
+3. Remote already exists: `https://github.com/termicapital/claude-suhail-plugin.git`. Target repo name is `proposal-skill` — Haiku should first ask Guillermo to confirm the rename (`gh repo rename proposal-skill --repo termicapital/claude-suhail-plugin`). GitHub creates redirects from the old URL, but the repo URL change affects any teammate who already cloned. If renamed, update the remote: `git remote set-url origin https://github.com/termicapital/proposal-skill.git`.
 4. **`README.md` at repo root** (concise, teammate-focused):
    - One-paragraph "what is this".
-   - Install steps:
+   - Install steps (assumes repo renamed to `proposal-skill`):
      ```sh
-     git clone git@github.com:<gjira>/suhail-claude-plugin.git ~/.claude/plugins/suhail
+     git clone https://github.com/termicapital/proposal-skill.git ~/.claude/plugins/suhail
      cd ~/.claude/plugins/suhail
      pip install -r requirements.txt
      ```
-     (Windows path: `%USERPROFILE%\.claude\plugins\suhail`.)
+     (Windows path: `%USERPROFILE%\.claude\plugins\suhail`.) Note the clone target directory is still `suhail` — that's the plugin name in `plugin.json`; the repo name and the plugin name don't have to match.
    - Per-teammate Figma setup:
      - Add the Figma MCP connector to their Claude Code.
      - Ensure their Figma account is Pro tier (required for `create_new_file`).
@@ -337,9 +337,14 @@ Before declaring v1.0 done:
 
 ---
 
-## 8. Open questions for Guillermo before Phase 1
+## 8. Resolved decisions (Guillermo, 2026-05-23)
 
-1. **Master template file location:** OK to keep "Suhail — Master Proposal Template" in your personal Figma drafts, or do you want it in the shared Suhail Innovation Company team space?
-2. **Phase 4 optionality:** the proposed mandatory vs. optional split — does it match how you actually use the deck? Specifically, is `next_steps` truly optional?
-3. **`section_team`** is listed as optional, but the v0.3.0 schema has it as part of the 11 canonical sections. Confirm.
-4. **Repo name preference:** `suhail-claude-plugin`, `suhail-proposal-skill`, or other?
+1. **Master template location:** shared Suhail team space (not personal drafts). Haiku must ensure each teammate's Figma account is a member of that team, and capture the team's `planKey` for `create_new_file` calls.
+2. **Optionality:** `next_steps` is **mandatory**; `team` is **optional**. Reflected in Phase 4 catalog above.
+3. **Repo name:** `proposal-skill`. Existing repo is `termicapital/claude-suhail-plugin` — Haiku should ask Guillermo to confirm `gh repo rename` before pushing the install instructions in Phase 5.
+
+## 9. Action required from Guillermo before Phase 1
+
+- Confirm repo rename (`gh repo rename proposal-skill --repo termicapital/claude-suhail-plugin`) — Haiku will not perform this without explicit consent.
+- Identify the shared Suhail Figma team and confirm every intended teammate is a member.
+- Complete Phase 1 (the manual Figma work) and send Haiku the new `MASTER_TEMPLATE_KEY` plus the Suhail team `planKey`.
