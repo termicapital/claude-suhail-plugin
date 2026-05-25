@@ -13,7 +13,7 @@ Sections marked **client-content** have `{{placeholders}}`. Sections marked **bo
 | 3 | الملخص التنفيذي (Executive Summary) | `exec_summary` | client-content | `{{exec_intro}}` (top paragraph, no number) + `{{exec_point_1}}` `{{exec_point_2}}` `{{exec_point_3}}` (3 numbered points) |
 | 4 | ارتباط المشروع باستراتيجية الجمعية (Strategic Alignment) | `strategy` | client-content | 6 body slots paired with fixed Arabic labels: `{{strategy_vision}}` (الرؤية الاستراتيجية), `{{strategy_solution}}` (الحل المقترح), `{{strategy_challenge}}` (التحدي المركزي), `{{strategy_value}}` (القيمة الملموسة), `{{strategy_sustainability}}` (قابلية الاستدامة), `{{strategy_feasibility}}` (الجدوى العملية) |
 | 5 | السياق العام للمشروع (General Context) | `context` | client-content | `{{context_para_1}}` `{{context_para_2}}` `{{context_para_3}}` `{{context_para_4}}` (4 paragraphs; Mord has a duplicate text node for para 3 that takes the same value — see "Known quirks" below) |
-| 6 | فهمنا للمشروع (Project Understanding) | `understanding` | client-content | `{{understanding_intro}}` + 8 challenge cards: `{{challenge_N_title}}` and `{{challenge_N_body}}` for N=1..8. **Phase 1 partial — needs Haiku follow-up** (Mord slide 6 hit a Figma MCP timeout during placeholder authoring; structure inferred from earlier enumeration only) |
+| 6 | فهمنا للمشروع (Project Understanding) | `understanding` | client-content | `{{understanding_intro}}` + 8 challenge cards with **3 fields each**: `{{challenge_N_title}}`, `{{challenge_N_body}}`, `{{challenge_N_priority}}` for N=1..8. The 3rd field (`priority` / "توصيف الأولوية") was missed in v0 of the schema — see `phase1-fix-map.md` for the slide-6 backfill. Slide 6 also hits a Figma MCP `use_figma` timeout on deep tree walks; use smaller-scope queries (direct children, no `findAll`). |
 | 7 | المنهجية المقترحة (Proposed Methodology) | `methodology_intro` | client-content | `{{methodology_overview}}`, `{{methodology_expected_outcome}}`, `{{methodology_principle}}` (the "لا نبدأ بالحل..." guiding statement) |
 | 8 | مراحل المنهجية التنفيذية (Phases Overview) | `methodology_phases` | client-content | 9 phase cards: `{{phase_N_title}}` and `{{phase_N_brief}}` for N=1..9 |
 | 9 | المرحلتان 1–2 (Setup + Training detail) | `methodology_detail_a` | client-content | per-phase fields for phases 1, 2 — see "Phase detail fields" below |
@@ -21,19 +21,20 @@ Sections marked **client-content** have `{{placeholders}}`. Sections marked **bo
 | 11 | المرحلتان 5–6 (Design + Testing detail) | `methodology_detail_c` | client-content | phases 5, 6 |
 | 12 | المرحلتان 7–8 (Improvement + Scaling detail) | `methodology_detail_d` | client-content | phases 7, 8 |
 | 13 | المرحلة 9 (Knowledge Transfer detail) | `methodology_detail_e` | client-content | phase 9 |
-| 14 | محاور التشخيص الابتكاري والمنتجي (Diagnosis Axes) | `diagnosis` | client-content | `{{diagnosis_axis_N}}` (typically 4–6 axes) |
-| 15 | المخرجات النهائية للمشروع (Final Deliverables) | `deliverables` | client-content | `{{deliverable_N}}` (typically 6–10 items) |
-| 16 | قياس الأداء (KPIs) | `kpis` | client-content | `{{kpi_N_metric}}` + `{{kpi_N_target}}` (typically 5–8 KPIs) |
+| 14 | محاور التشخيص الابتكاري والمنتجي (Diagnosis Axes) | `diagnosis` | client-content | `{{diagnosis_axis_N}}` for N=1..22 (Mord lays out 22 axis positions across 2 columns × 11 rows; reading order = right column then left column per row) |
+| 15 | المخرجات النهائية للمشروع (Final Deliverables) | `deliverables` | client-content | `{{deliverable_N}}` (typically 6–10 items) — plus one boilerplate intro line on slide (`1:1318`, "المخرجات النهائية التالية منسجمة مع مراحل المنهجية...") that stays fixed across proposals |
+| 16 | قياس الأداء (KPIs) | `kpis` | client-content | 12 KPI rows × 3 fields: `{{kpi_N_metric}}`, `{{kpi_N_description}}`, `{{kpi_N_target}}` for N=1..12. Mord's table has a column-header row at the top (`المؤشر` / `الوصف / طريقة القياس` / `المستهدف`) that stays as boilerplate |
 | 17 | الجدول الزمني التفصيلي (Detailed Timeline) | `timeline` | client-content | 12-month gantt with phase rows — exact placeholder shape TBD after slide inspection |
 | 18 | شكراً (Thank You) | `closing` | boilerplate | — |
 
 ## Phase detail fields (slides 9–13)
 
-Each phase (1..9) has these placeholder slots:
+Each phase (1..9) has **4** placeholder slots (Mord's table has 4 columns per phase, not 3 — the 4th was missed in v0):
 
-- `{{phase_N_objective}}` — what this phase aims to achieve
-- `{{phase_N_activities}}` — what is done during the phase (bulleted)
-- `{{phase_N_deliverables}}` — what the phase produces
+- `{{phase_N_objective}}` — what this phase aims to achieve (Arabic Subheader: الهدف)
+- `{{phase_N_activities}}` — what is done during the phase (Arabic Subheader: الأنشطة الرئيسية)
+- `{{phase_N_deliverables}}` — what the phase produces (Arabic Subheader: المخرجات)
+- `{{phase_N_requirements}}` — what the phase needs to start (Arabic Subheader: المتطلبات)
 
 The 9 phases (Suhail's standard methodology stages):
 
@@ -62,11 +63,15 @@ The 9 phases (Suhail's standard methodology stages):
 
 For v1.0 of `proposal-create`, **all 18 slides are mandatory**. The "skippable section" mechanism described in the implementation plan is wired but unused — every Suhail proposal includes every slide. Missing brief content becomes a visible `{{placeholder}}` so the operator notices and fills in by hand.
 
-## Phase 1 status (as of 2026-05-23)
+## Phase 1 status (as of 2026-05-23, post-verification)
 
-Opus 4.7 hand-edited slides **1–5** to add placeholders + named brand-color layers + section-encoded slide names. Slides **6–18** still need the same treatment by Haiku before the snapshot extractor runs. The naming conventions established on slides 1–5 should be carried forward exactly:
+- **Slides 1–5, 8, 18:** correct. Done by Opus 4.7 (1–5) and Haiku 4.5 (8, 18).
+- **Slides 6, 7, 9–14, 16, 17:** **broken or incomplete**. Haiku's first pass placeholdered the wrong nodes on most of these slides — see `phase1-fix-map.md` for the per-node-ID repair instructions. Until that fix-map is applied, downstream phases (snapshot/replay) cannot run.
+- **Slide 15:** near-complete; only an intentionally-boilerplate intro line remains (documented above).
 
-- Slide name: `NN — <slug> | section=<section_id>`
+Naming conventions (apply consistently in the fix pass):
+
+- Slide name: `NN — <slug> | section=<section_id>` (writable but may revert; runtime should also have a position-based section map as fallback)
 - Brand-color elements: `brand_primary_<section>_<role>` (e.g. `brand_primary_strategy_accent`)
 - Logo: `logo_container` (currently on slide 1 only)
 - Client-content text nodes: layer renamed to the placeholder slug (e.g. `exec_intro`, `strategy_vision`)
