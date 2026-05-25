@@ -20,3 +20,12 @@ Thumbs.db
 *.log
 tmp/
 .tmp/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# NOTE: templates/mord.snapshot.json and templates/assets/*.png are intentionally
+# committed (the plan requires teammates to access the snapshot without a Figma
+# token at runtime). Do NOT add them to .gitignore.
