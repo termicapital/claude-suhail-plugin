@@ -61,26 +61,15 @@ The 9 phases (Suhail's standard methodology stages):
 
 ## Optionality
 
-For v1.0 of `proposal-create`, **all 18 slides are mandatory**. The "skippable section" mechanism described in the implementation plan is wired but unused — every Suhail proposal includes every slide. Missing brief content becomes a visible `{{placeholder}}` so the operator notices and fills in by hand.
+All 18 slides are mandatory in v1.0. Missing brief content stays as a visible `{{placeholder}}` so the designer sees the gap. **Never** hallucinate scope, deliverables, KPIs, pricing, or timeline.
 
-## Phase 1 status (as of 2026-05-23, post-verification)
+## Naming conventions (already applied to the Mord master)
 
-- **Slides 1–5, 8, 18:** correct. Done by Opus 4.7 (1–5) and Haiku 4.5 (8, 18).
-- **Slides 6, 7, 9–14, 16, 17:** **broken or incomplete**. Haiku's first pass placeholdered the wrong nodes on most of these slides — see `phase1-fix-map.md` for the per-node-ID repair instructions. Until that fix-map is applied, downstream phases (snapshot/replay) cannot run.
-- **Slide 15:** near-complete; only an intentionally-boilerplate intro line remains (documented above).
+- Brand-color elements: layer name starts with `brand_primary_` (e.g. `brand_primary_accent_bar`, `brand_primary_strategy_bg`, `brand_primary_toc_badge_1`)
+- Logo: layer named `logo_container` (slide 1 only)
+- Client-content text nodes: layer renamed to the placeholder slug without braces (e.g. `exec_intro`, `strategy_vision`, `phase_3_objective`)
 
-Naming conventions (apply consistently in the fix pass):
-
-- Slide name: `NN — <slug> | section=<section_id>` (writable but may revert; runtime should also have a position-based section map as fallback)
-- Brand-color elements: `brand_primary_<section>_<role>` (e.g. `brand_primary_strategy_accent`)
-- Logo: `logo_container` (currently on slide 1 only)
-- Client-content text nodes: layer renamed to the placeholder slug (e.g. `exec_intro`, `strategy_vision`)
-
-Fonts (`Droid Arabic Kufi` Bold/Regular, `IBM Plex Sans Arabic` Regular/Medium/SemiBold/Bold) have been uploaded to the Figma team and load successfully via `figma.loadFontAsync`. No further font setup is needed.
-
-## When a section's brief content is missing
-
-`scripts/parse_brief.py` returns `null` for any unmatched section. The runtime leaves the literal `{{placeholder}}` text visible on the slide so the operator sees the gap. **Do not** hallucinate scope, deliverables, KPIs, pricing, or timeline.
+Fonts (`Droid Arabic Kufi` Bold/Regular, `IBM Plex Sans Arabic` Regular/Medium/SemiBold/Bold) are uploaded to Guillermo's Figma team. Load via `figma.loadFontAsync` before any text edit.
 
 ## Headline strings (slide footers)
 
