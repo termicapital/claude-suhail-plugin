@@ -1,62 +1,105 @@
 ---
 name: proposal-create
-description: Generate a Suhail-branded Arabic (RTL) proposal as a Figma Slides deck for a non-profit client. Use when the user says "create a proposal", "make a proposal", "proposal for <client>", "Suhail proposal", "propuesta", or uses Arabic "عرض", "عرض فني", "مقترح", especially when paired with a client website URL or content brief. Triggers on client names like Kyan, Ofuq, MORD, AlUla volunteers.
-version: 0.3.0
+description: Fill a duplicated Mord-style Arabic (RTL) proposal deck in Figma Slides with content from a brief and brand assets from the NGO's website. Use when the user says "create a proposal", "make a proposal", "proposal for <client>", "Suhail proposal", or uses Arabic "عرض", "عرض فني", "مقترح", especially when paired with a Figma URL + NGO website URL + brief.
+version: 1.0.0
 ---
 
 # proposal-create
 
-Generates an Arabic-language Figma Slides proposal for a Suhail non-profit client. The skill fetches the client's brand identity from their website, parses a project brief, and builds the deck via the Figma MCP — logo on cover, brand color as accent, content laid out RTL, with 11 canonical sections.
+Populates a duplicated copy of the Suhail Mord master template with client-specific content. The skill does **not** create files or copy templates — the designer duplicates the master template in Figma UI (one click), and this skill fills in the duplicate.
+
+## The workflow at a glance
+
+1. **Designer prepares (manual, one minute):**
+   - Open the Mord master template in Figma (fileKey `JtzNUXrAHFupkajwfPz952`)
+   - Right-click the file or use File menu → **Duplicate**
+   - Open the duplicate, copy its URL
+2. **Designer invokes the skill:**
+   ```
+   /proposal-create
+     figma_url=https://www.figma.com/slides/<NEW_KEY>/...
+     client_url=https://kyan.org.sa
+     brief=path/to/brief.docx
+   ```
+3. **Skill runs:** fetches the NGO logo + brand color, reads the brief, walks the duplicated Figma file, substitutes every `{{placeholder}}` with the right Arabic content, swaps the logo image, and applies the NGO's primary color to brand-accent elements.
+4. **Designer reviews:** opens the populated file, proofreads, polishes anything that didn't fit.
 
 ## Prerequisites (per-user setup)
 
-Each teammate using this skill needs:
+Each teammate needs:
 
-1. **Figma MCP server connected** to their account, signed in to a Figma Pro (or higher) plan. The connector's server prefix is environment-specific (often a UUID like `mcp__44c58728-…__`); the workflow locates it at runtime — see Step 0.
-2. **The 3 slide templates accessible** in their Figma account. Either ask whoever holds them to share `s1ZJkZ6vGxhnR5D5zF9bdc`, `JtzNUXrAHFupkajwfPz952`, `PNVPb5cMrL0xoP9ZAWpbPh`, or duplicate them into their own drafts and update the fileKeys in `references/slide-templates.md`.
-3. **Python 3 with `requests`, `beautifulsoup4`, `Pillow`, `python-docx`** for the `fetch_brand.py` / `parse_brief.py` fallbacks. Skill degrades gracefully if scripts can't run — WebFetch alone covers most cases.
+1. **Figma MCP connector** in their Claude Code, signed in to a Figma plan that allows the connector. The MCP prefix is environment-specific — the skill locates it at runtime.
+2. **Access to the Mord master template** (`JtzNUXrAHFupkajwfPz952`) — shared by Guillermo via Figma.
+3. **The Suhail custom fonts** (`Droid Arabic Kufi`, `IBM Plex Sans Arabic`) uploaded to their Figma team. Guillermo did this once for the team; new teammates inherit it automatically.
+4. **Python 3** with `beautifulsoup4`, `Pillow`, `python-docx`, `requests` (for the brand-extraction and brief-parsing helpers — `pip install -r requirements.txt`).
+
+No FIGMA_TOKEN or REST API access is required. The skill uses the Figma MCP plugin API.
 
 ## Required inputs
 
-- `client_url` — the client's website (e.g. `https://kyan.org.sa`). Source of logo, brand color, official Arabic name, mission.
-- `brief` — the project brief. Either a file path (`.docx` / `.md` / `.txt`) or inline text. Source of scope, deliverables, methodology, timeline, pricing, team.
+- `figma_url` — URL of the **duplicated Mord file** the designer created. The skill writes into this file.
+- `client_url` — the NGO's website. Source of logo, primary hex, official Arabic name.
+- `brief` — the project brief. Either a file path (`.docx` / `.md` / `.txt`) or inline text.
 
 ## Optional inputs
 
-- `client_name` — display name override (defaults to the org name extracted from the website).
-- `output_name` — Figma file name (defaults to `<client> — عرض فني`).
-- `template_key` — Figma fileKey of a reference Slides template to screenshot for visual cues. Defaults to `s1ZJkZ6vGxhnR5D5zF9bdc` (Association of Volunteers in AlUla). Alternates: `JtzNUXrAHFupkajwfPz952` (Mord), `PNVPb5cMrL0xoP9ZAWpbPh` (Ofuq).
-- `primary_hex`, `secondary_hex`, `logo_path` — manual overrides if the website scrape is wrong.
+- `primary_hex`, `logo_path` — manual overrides if the website scrape is wrong.
+- `client_name` — Arabic NGO name override (defaults to what's extracted from the website).
 
-If either required input is missing, ask the user **once** with a single combined question. Do not loop.
+If `figma_url`, `client_url`, or `brief` is missing, ask **once** with a single combined question. Don't loop.
 
-## Workflow
+## Workflow steps
 
-0. **Locate Figma MCP tools.** The Figma MCP server prefix is environment-specific (different UUID per user). At session start, identify the prefix via ToolSearch (`query="figma whoami"` or similar) or by inspecting the loaded tool names — find any tool with `whoami`, `create_new_file`, `use_figma`, `upload_assets`, `get_screenshot` in the name and extract its `mcp__<prefix>__` portion. Mentally prepend it to every Figma tool reference in the steps below. Cache the prefix for the session. If no Figma MCP is connected, stop and tell the user to add the Figma connector first.
+### 0. Locate the Figma MCP tools
 
-1. **Brand extraction.** WebFetch `client_url` asking for JSON `{logo_url, primary_hex, secondary_hex, org_name_ar, mission_ar}`. If `logo_url` or `primary_hex` is null, run `scripts/fetch_brand.py --url <client_url> --out <tempdir>` for a Pillow-based fallback. If still null, use `assets/suhail-default-palette.json` and tell the user the logo wasn't found so they can replace it manually. See `references/brand-extraction.md`.
+The MCP prefix is environment-specific (UUID per user). At session start, identify the prefix via ToolSearch (query: `figma whoami`) or by inspecting loaded tool names. Find any tool with `whoami`, `use_figma`, `get_screenshot`, `upload_assets` in its name and use the `mcp__<prefix>__` portion. If no Figma MCP is connected, stop and tell the user.
 
-2. **Brief parsing.** If `brief` is a file path, call `scripts/parse_brief.py <path>` → returns JSON keyed by the 11 canonical sections. If inline, do the same section assignment in-context. Missing sections become explicit `"[ـ ـ ـ]"` placeholders in the deck — **never** hallucinate scope, deliverables, pricing, or timeline. See `references/content-sections.md` for the canonical schema.
+### 1. Extract brand assets from the NGO website
 
-3. **Reference visual style.** Call `get_screenshot(template_key, nodeId="0:1")` for an all-slides overview of one template, then a handful of individual slide nodes if needed. The proposal is built around the **client's** brand — the template is purely a layout/typography/density reference. Don't propagate any of the template's own client logos or organization names into the new file.
+Call `fetch_brand.py --url <client_url> --out <tempdir>`. Returns JSON `{logo_url, primary_hex, secondary_hex, org_name_ar, mission_ar}`. If `logo_url` or `primary_hex` is null, fall back to `WebFetch` of the homepage. If still null, use `assets/suhail-default-palette.json` and tell the user the logo wasn't found.
 
-4. **Create the file.** Call `whoami` (Figma MCP) → take the first `plans[].key` as `planKey`. Then `create_new_file({ name: "<client> — عرض فني", editorType: "slides", planKey })`. If `planKey` is missing or `tier` is not paid/team, stop and tell the user the Figma plan must be upgraded.
+See `references/brand-extraction.md` for edge cases.
 
-5. **Upload the logo.** `upload_assets({ fileKey, count: 1 })` → returns a short-lived URL. POST the logo bytes to that URL. If the logo file is >5 MB, downscale to PNG width 1024 first (10 MB MCP cap). Capture the returned image hash / URL.
+### 2. Parse the brief
 
-6. **Build the slides** with a sequence of `use_figma` calls grouped by logical section so one failure doesn't redo everything:
-   - **Call 1** — probe the Slides API surface, build the cover (logo right, Arabic title, accent bar).
-   - **Call 2** — about-client + opportunity/problem.
-   - **Call 3** — solution + scope/deliverables.
-   - **Call 4** — methodology + timeline.
-   - **Call 5** — investment + next steps + contact.
-   Every text node: `textAlignHorizontal = "RIGHT"`. Arabic font fallback chain (see `references/rtl-arabic.md`). Brand color as accent bar, headings, and dividers (converted to 0-1 floats — see snippet below).
+Call `parse_brief.py <path>` if `brief` is a file path. Otherwise read inline text. The script returns the full brief text grouped by section heading (the Arabic headings from the example: `الملخص التنفيذي`, `ارتباط المشروع باستراتيجية الجمعية`, `السياق العام`, etc.).
 
-7. **Verify & return.** `get_screenshot` of the cover. Confirm the logo is placed and Arabic is shaped correctly. Reply with `https://www.figma.com/slides/<fileKey>/<name>`.
+If the brief is missing entire sections (no `الجدول الزمني` for example), do not invent content. The corresponding placeholders stay as `{{token}}` and surface as visible gaps in the deck.
 
-## Hex → Figma RGB snippet
+### 3. Map brief content to placeholders
 
-Inside any `use_figma` `code`:
+This is the heart of the skill. Read `references/content-sections.md` to know which placeholder lives on which slide. Then, **reading the brief and the schema together**, build a mapping `{placeholder_token: arabic_content}` covering every `{{token}}` in the Mord layout.
+
+The full list of placeholder tokens is in `references/content-sections.md`. Examples:
+
+- `{{project_title}}` ← brief's project title (first heading or cover line)
+- `{{exec_intro}}` ← top paragraph of `الملخص التنفيذي`
+- `{{exec_point_1}}` … `{{exec_point_3}}` ← the three numbered or bulleted points
+- `{{strategy_vision}}` ← the "vision" item in the strategy section
+- `{{phase_3_objective}}`, `{{phase_3_activities}}`, `{{phase_3_deliverables}}`, `{{phase_3_requirements}}` ← phase 3 ("فهم التحدي") fields
+- …
+
+**Use Arabic comprehension, not regex.** The brief's structure is a guide; the placeholder schema is the target. Match by meaning. If a brief paragraph clearly maps to one placeholder, use it. If a paragraph could fit multiple, choose the closest. If a placeholder has no brief content, leave it as `{{token}}` and log a warning.
+
+**Hard rule:** never invent commercial commitments. If the brief lacks `methodology`, `timeline`, `KPIs`, or `deliverables`, leave those placeholders visible. Designer fills them in by hand.
+
+### 4. Walk the Figma file and substitute
+
+For each slide (1..18) in the duplicated file at `figma_url`:
+
+1. `use_figma` to find all TEXT nodes whose `characters` contains `{{`.
+2. For each such node, look up the placeholder token in the mapping. If found, set `node.characters = mapped_value`. If not found, leave as-is.
+3. Load all needed fonts up front in one `Promise.all` call (six font weights — see `references/rtl-arabic.md`).
+
+Batch by slide. One `use_figma` call per slide keeps payloads under the 50KB limit.
+
+### 5. Swap the logo
+
+`figma.findOne(n => n.name === "logo_container")` returns the cover slide's logo rectangle. Upload the NGO logo via `upload_assets({fileKey, count: 1, nodeId: <logo_container_id>})` — this returns a short-lived URL; POST the logo bytes to it. If the logo is >5MB, downscale to PNG width 1024 first.
+
+### 6. Apply the brand primary color
+
+For each node whose name starts with `brand_primary_` (slide 1 cover bar, TOC badges, section accent backgrounds, strategy frame backgrounds, methodology accents, etc.), set its solid fill to the NGO's primary hex. Convert hex → 0-1 RGB:
 
 ```javascript
 const hex2rgb = h => ({
@@ -66,75 +109,20 @@ const hex2rgb = h => ({
 });
 ```
 
-## Slides API probe (run once on the first `use_figma` call)
+### 7. Verify and report
 
-```javascript
-return {
-  slideKeys: Object.keys(figma).filter(k => /slide/i.test(k)),
-  firstChildType: figma.currentPage.children[0]?.type,
-  canCreateSlide: typeof figma.createSlide === "function",
-};
-```
+`get_screenshot` of slide 1 (cover) and one mid-deck slide (e.g. slide 7 methodology_intro). Confirm the logo placed, the brand color applied, Arabic shaped correctly. Reply with `figma_url` and a list of any placeholders that remained unfilled (for the designer to address by hand).
 
-Use the result to pick between `figma.createSlide()` and `figma.currentPage.appendChild(figma.createSlide())` patterns. Persist the answer in the conversation so later calls don't re-probe.
+## Hard rules
+
+- **Don't hallucinate scope, deliverables, KPIs, pricing, or timeline.** Missing brief content stays as visible `{{placeholder}}`.
+- **Don't write to the master template** (`JtzNUXrAHFupkajwfPz952`). Always write to the duplicated file. If `figma_url` points to the master, stop and ask the designer to duplicate first.
+- **Don't generate the deck in English** unless the user explicitly overrides. Default is Arabic RTL.
+- **Don't use Figma's REST API.** It doesn't support Slides files. Use only MCP tools (`use_figma`, `get_screenshot`, `upload_assets`, `whoami`).
 
 ## What to read when
 
 - Lay out Arabic correctly → `references/rtl-arabic.md`
-- Map a brief section to the right slide → `references/slide-templates.md` + `references/content-sections.md`
+- See the full placeholder schema for every slide → `references/content-sections.md`
 - Extract a logo or color from a stubborn website → `references/brand-extraction.md`
-- Figma plan / planKey edge cases → check `whoami` output structure
-
-## Hard rules
-
-- **Don't hallucinate commercial commitments.** If the brief omits scope, deliverables, pricing, or timeline, leave a visible placeholder. These are contracts.
-- **Don't call `get_metadata` on the new file.** It's a Slides file; the tool only works on Design files. Use `get_screenshot` for verification.
-- **Don't skip the API probe.** Slides API surface changes; probe once per session before assuming method names.
-- **Don't generate the deck in English unless the user explicitly overrides.** Default is Arabic RTL.
-
-## Slides API gotchas (from v0.3.0 production dry-run)
-
-These bit me during the first real Kyan run. Bake the workarounds into every `use_figma` call:
-
-1. **Fresh Slides files have an empty `SLIDE_GRID`, not a default `SLIDE`.** `figma.currentPage.children` returns `[SLIDE_GRID]` with `children.length === 0`. To get a slide, call `figma.createSlide()` — it creates a `SLIDE` (1920×1080) and auto-attaches it to the grid. Don't search for an existing SLIDE node on a brand-new file.
-
-2. **`SLIDE_GRID` nodes throw on `fills`, `createSlide`, and most other property accesses.** Any tree-walk that touches `.fills` must guard: either `if ('fills' in node)` *and* `Array.isArray(node.fills)`, or skip via `if (node.type === "SLIDE_GRID") continue`. A naive `walk(...)` will crash on the first SLIDE_GRID it hits.
-
-3. **Position offset bug for many-child slides.** When a SLIDE accumulates ~5+ children directly, children added after the 4th are stored with their `x`/`y` shifted by `(-240, -240)` relative to what you set. Verified via probe: I set `x=60, y=1030`, Figma stored `x=-180, y=790`. The first 4 children are placed correctly. Workaround:
-
-   ```javascript
-   // After all children are added to a slide or its content frame:
-   function fixOffsets(container, startIndex = 4) {
-     for (let i = startIndex; i < container.children.length; i++) {
-       const c = container.children[i];
-       c.x += 240; c.y += 240;
-     }
-   }
-   ```
-   The shift is exactly +240 on both axes for indices ≥ 4. Apply once at the end of each slide-build call.
-
-4. **Use a content `FRAME` inside each slide as the layout root.** Pattern:
-   ```javascript
-   const slide = figma.createSlide();
-   slide.name = "01 — الغلاف";
-   const fr = figma.createFrame();
-   fr.name = "content";
-   fr.resize(1920, 1080);
-   fr.x = 0; fr.y = 0;
-   fr.layoutMode = "NONE";
-   fr.clipsContent = true;
-   fr.fills = [{ type: "SOLID", color: WHITE }];
-   slide.appendChild(fr);
-   // ...add all content to `fr`, not directly to `slide`...
-   fixOffsets(fr);
-   ```
-   The frame also makes the slide canvas predictable when querying width/height.
-
-5. **Don't trust `slide.height` after appending children.** It can change. Use the constants `W = 1920, H = 1080` for positioning math.
-
-6. **PYTHONIOENCODING=utf-8 is mandatory on Windows.** Otherwise `scripts/parse_brief.py` and `scripts/fetch_brand.py` choke on Arabic bullet glyphs (`●`, `•`) when piping JSON to stdout. Set in the shell command:
-   ```
-   PYTHONIOENCODING=utf-8 python scripts/parse_brief.py ...
-   ```
-
-7. **`fetch_brand.py` deps must be installed once.** `pip install requests beautifulsoup4 Pillow python-docx`. If `bs4` isn't found, fall back to: download the logo URL from WebFetch's response directly via curl, then quantize colors inline with Pillow. (`fetch_brand.py` will graceful-fail with a clear stderr if the import is missing.)
+- See the Mord template's known quirks → `references/content-sections.md` ("Known quirks" section)
