@@ -9,7 +9,7 @@
     {
       "name": "suhail",
       "source": ".",
-      "description": "Skills for Suhail client deliverables — proposals, decks, reports. First skill: proposal-create (Arabic RTL Figma Slides proposals for non-profit clients)."
+      "description": "Skills for Suhail client deliverables — proposals, decks, reports. Skills: proposal-create (Arabic RTL Figma Slides proposals) and proposal-html (single-file Arabic print-ready HTML proposals, PDF-exportable, low token cost)."
     }
   ]
 }
